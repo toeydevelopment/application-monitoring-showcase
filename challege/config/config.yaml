@@ -1,0 +1,11 @@
+run:
+  env: "development"
+  port: "1323"
+  max_lives: 1000
+  pool_size: 20
+  redis_cluster: false
+
+vault:
+  baseurl:  "https://vault.api-fillgoods.com"
+  token: ""
+  path: "/support/facebook_live"

@@ -1,0 +1,124 @@
+version: '2.2'
+
+services:
+
+  basic:
+    networks:
+      - toey-networks
+    build:
+      context: basic/
+    ports:
+      - 3000:3000
+    depends_on:
+      - apm-server
+    environment:
+      - ELASTIC_APM_SERVER_URL=http://apm-server:8200
+      - ELASTIC_APM_SERVICE_NAME=basic
+      - ELASTIC_APM_SECRET_TOKEN=xxVpmQB2HMzCL9PgBHVrnxjNXXw5J7bd79DFm6sjBJR5HPXDhcF8MSb3vv4bpg44
+
+  withdb:
+    networks:
+      - toey-networks
+    build:
+      context: withdb/
+    ports:
+      - 3001:3000
+    depends_on:
+      - apm-server
+    environment:
+      - ELASTIC_APM_SERVER_URL=http://apm-server:8200
+      - ELASTIC_APM_SERVICE_NAME=withdb
+      - ELASTIC_APM_SECRET_TOKEN=xxVpmQB2HMzCL9PgBHVrnxjNXXw5J7bd79DFm6sjBJR5HPXDhcF8MSb3vv4bpg44
+
+  fulltrace-client:
+    networks:
+      - toey-networks
+    build:
+      context: fulltrace/
+      dockerfile: Dockerfile.client
+    links:
+      - fulltrace-server
+    ports:
+      - 3002:3000
+    depends_on:
+      - apm-server
+      - fulltrace-server
+    environment:
+      - ELASTIC_APM_SERVER_URL=http://apm-server:8200
+      - ELASTIC_APM_SERVICE_NAME=fulltrace-client
+      - ELASTIC_APM_SECRET_TOKEN=xxVpmQB2HMzCL9PgBHVrnxjNXXw5J7bd79DFm6sjBJR5HPXDhcF8MSb3vv4bpg44
+  
+  fulltrace-server:
+    networks:
+      - toey-networks
+    build:
+      context: fulltrace/
+      dockerfile: Dockerfile.server
+    depends_on:
+      - apm-server
+    environment:
+      - ELASTIC_APM_SERVER_URL=http://apm-server:8200
+      - ELASTIC_APM_SERVICE_NAME=fulltrace-server
+      - ELASTIC_APM_SECRET_TOKEN=xxVpmQB2HMzCL9PgBHVrnxjNXXw5J7bd79DFm6sjBJR5HPXDhcF8MSb3vv4bpg44
+
+  # postgres:
+  #   image: postgres
+  #   environment:
+  #     - POSTGRES_USER=fillgoods
+  #     - POSTGRES_PASSWORD=fillgoods
+  #     - PGDATA=/data/postgres
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.1
+    networks:
+      - toey-networks
+    environment:
+      - "cluster.routing.allocation.disk.threshold_enabled=false"
+      - "discovery.type=single-node"
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - 9200:9200
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9200']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.7.1
+    networks:
+      - toey-networks
+    environment:
+      - "SERVER_HOST=0.0.0.0"
+    ports:
+      - 5601:5601
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:5601']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:7.7.1
+    networks:
+      - toey-networks
+    ports:
+      - 8200:8200
+    environment:
+      - output.elasticsearch.hosts=['http://elasticsearch:9200']
+      - apm-server.host="0.0.0.0:8200"
+      - apm-server.secret_token="xxVpmQB2HMzCL9PgBHVrnxjNXXw5J7bd79DFm6sjBJR5HPXDhcF8MSb3vv4bpg44"
+      - setup.kibana.host="kibana:5601"
+      - setup.template.enabled=true
+      - logging.to_files=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+
+networks:
+  toey-networks:

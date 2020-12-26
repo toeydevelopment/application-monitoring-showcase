@@ -1,0 +1,16 @@
+syntax = "proto3";
+option go_package="trace";
+
+message HelloWorldRequest {
+    string name = 1;
+}
+
+message HelloWorldResponse {
+    string name = 1;
+}
+
+
+
+service FullTraceService {
+rpc HelloWorld(HelloWorldRequest) returns(HelloWorldResponse);
+}
